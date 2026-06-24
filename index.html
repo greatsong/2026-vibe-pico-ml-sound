@@ -597,7 +597,7 @@ while True:
         feat = features(grab()); name, conf = predict(feat)
         print(&quot;이건… %s!  (확신 %d%%, 크기=%.0f 높낮이=%d 들쭉=%.2f)&quot;
               % (name, conf * 100, feat[0], feat[1], feat[2]))
-        show(cidx[name], max(1, int(conf * NUM))); time.sleep(1.0); show(0, 0)</code></pre></div></details></section><section class="sec" id="chml-9"><h3 class="sec-title">모의 테스트 — 하드웨어 없이 브라우저에서 체험</h3><p class="prose">피코가 없어도 괜찮아요. 아래에서 소리를 골라 누르면 같은 <b>3특징 k-NN</b>이 맞히고, <b>목소리로 말해줍니다</b>(MP3 출력 미리보기!). ‘내 마이크’ 탭에선 진짜 마이크로 직접 가르치고 테스트할 수도 있어요.</p><div class="mocktest" data-ac="#0891B2"></div><div class="callout tip"><div class="callout-head">💡 마이크 모드는 https에서</div><div class="callout-body">‘내 마이크’ 탭은 브라우저 마이크 권한이 필요해, <b>배포된 https 사이트</b>에서 가장 잘 됩니다. 버튼 모드는 어디서나 동작해요.</div></div></section><section class="sec" id="chml-10"><h3 class="sec-title">더 멋지게 — 수집·분류 대시보드 (피코 2 WH = 웹서버)</h3><p class="prose">Thonny 셸 대신 <b>폰/PC 브라우저</b>에서 버튼으로 모으고, <b>실시간 3D 산점도</b>로 무리가 갈리는 걸 보고, <b>예측까지</b> 한 화면에서! 1·3·5장 대시보드와 같은 ‘<b>피코=서버</b>’ 구조예요. (피코 2 WH의 와이파이를 씁니다.)</p><div class="callout info"><div class="callout-head">ℹ️ 먼저 — 와이파이 정보 파일 (wifi_config.py)</div><div class="callout-body">1·3·5장에서 만든 <code>wifi_config.py</code>(<code>WIFI_SSID</code>·<code>WIFI_PASSWORD</code>)가 피코에 있어야 해요. 학교망이 기기 간 통신을 막으면 <b>폰 핫스팟</b>이 가장 확실합니다(폰과 피코가 <b>같은 와이파이</b>).</div></div><details class="codefold"><summary>코드 · 수집·분류 대시보드 (피코 2 WH) <span class="fold-hint">· 151줄 · 펼쳐서 복사</span></summary><div class="block code-block"><div class="block-head"><span class="block-label">코드 · 수집·분류 대시보드 (피코 2 WH)</span><span class="lang-tag">PYTHON</span><button class="copy-btn" aria-label="복사">복사</button></div><pre><code class="language-python"># 소리 수집·분류 대시보드 — 피코 2 WH = 웹서버, 폰/PC 브라우저 = 화면
+        show(cidx[name], max(1, int(conf * NUM))); time.sleep(1.0); show(0, 0)</code></pre></div></details></section><section class="sec" id="chml-9"><h3 class="sec-title">모의 테스트 — 하드웨어 없이 브라우저에서 체험</h3><p class="prose">피코가 없어도 괜찮아요. 아래에서 소리를 골라 누르면 같은 <b>3특징 k-NN</b>이 맞히고, <b>목소리로 말해줍니다</b>(MP3 출력 미리보기!). ‘내 마이크’ 탭에선 진짜 마이크로 직접 가르치고 테스트할 수도 있어요.</p><div class="mocktest" data-ac="#0891B2"></div><div class="callout tip"><div class="callout-head">💡 마이크 모드는 https에서</div><div class="callout-body">‘내 마이크’ 탭은 브라우저 마이크 권한이 필요해, <b>배포된 https 사이트</b>에서 가장 잘 됩니다. 버튼 모드는 어디서나 동작해요.</div></div></section><section class="sec" id="chml-10"><h3 class="sec-title">더 멋지게 — 수집·분류 대시보드 (피코 2 WH = 웹서버)</h3><p class="prose">Thonny 셸 대신 <b>폰/PC 브라우저</b>에서 버튼으로 모으고, <b>실시간 3D 산점도</b>로 무리가 갈리는 걸 보고, <b>예측까지</b> 한 화면에서! 1·3·5장 대시보드와 같은 ‘<b>피코=서버</b>’ 구조예요. (피코 2 WH의 와이파이를 씁니다.)</p><div class="callout info"><div class="callout-head">ℹ️ 먼저 — 와이파이 정보 파일 (wifi_config.py)</div><div class="callout-body">1·3·5장에서 만든 <code>wifi_config.py</code>(<code>WIFI_SSID</code>·<code>WIFI_PASSWORD</code>)가 피코에 있어야 해요. 학교망이 기기 간 통신을 막으면 <b>폰 핫스팟</b>이 가장 확실합니다(폰과 피코가 <b>같은 와이파이</b>).</div></div><details class="codefold"><summary>코드 · 수집·분류 대시보드 (피코 2 WH) <span class="fold-hint">· 158줄 · 펼쳐서 복사</span></summary><div class="block code-block"><div class="block-head"><span class="block-label">코드 · 수집·분류 대시보드 (피코 2 WH)</span><span class="lang-tag">PYTHON</span><button class="copy-btn" aria-label="복사">복사</button></div><pre><code class="language-python"># 소리 수집·분류 대시보드 — 피코 2 WH = 웹서버, 폰/PC 브라우저 = 화면
 #  버튼으로 수집 → 실시간 3D 산점도(Plotly) → 실시간 예측.  (와이파이 필요)
 #  ※ 마이크=아날로그 A1(GP27).  sounds.csv(rms,zcr,crest,label)와 호환.
 import network, socket, time, math
@@ -712,8 +712,14 @@ draw();
 &lt;/script&gt;&lt;/body&gt;&lt;/html&gt;&quot;&quot;&quot;
 
 def send(cl, body, ctype=&quot;text/html&quot;):
-    cl.send((&quot;HTTP/1.0 200 OK\r\nContent-Type: %s; charset=utf-8\r\n\r\n&quot; % ctype).encode())
-    cl.send(body if isinstance(body, bytes) else body.encode())
+    if not isinstance(body, bytes): body = body.encode()
+    hdr = (&quot;HTTP/1.0 200 OK\r\nContent-Type: %s; charset=utf-8\r\nConnection: close\r\nContent-Length: %d\r\n\r\n&quot; % (ctype, len(body))).encode()
+    mv = memoryview(hdr + body)
+    while mv:                                  # ★ 큰 페이지도 끝까지 전송(잘림 방지)
+        try:
+            sent = cl.send(mv); mv = mv[sent:]
+        except OSError:
+            time.sleep(0.005)
 
 srv = socket.socket(); srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 srv.bind((&quot;0.0.0.0&quot;, 80)); srv.listen(1); srv.setblocking(False)
@@ -723,6 +729,7 @@ while True:
     except OSError: cl = None
     if cl:
         try:
+            cl.settimeout(5)                   # 요청을 못 받아 멈추는 일 방지
             path = cl.recv(1024).split(b&quot; &quot;)[1]
             if path.startswith(b&quot;/rec?i=&quot;):
                 i = int(path.split(b&quot;=&quot;)[1]); show(i, NUM)

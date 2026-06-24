@@ -248,8 +248,13 @@ from machine import ADC, Pin
 from neopixel import NeoPixel
 import time, math
 
-mic = ADC(Pin(27)); N = 1600
-def grab(): return [mic.read_u16() for _ in range(N)]
+mic = ADC(Pin(27))
+WIN_MS = 200       # 한 번에 &#x27;0.2초&#x27;를 한 덩어리로 (녹음·예측과 동일한 길이!)
+def grab():
+    buf = []; t0 = time.ticks_ms()
+    while time.ticks_diff(time.ticks_ms(), t0) &lt; WIN_MS:
+        buf.append(mic.read_u16())
+    return buf
 
 def features(buf):                 # 한 조각 → (크기, 높낮이, 들쭉날쭉)
     n = len(buf); m = sum(buf) / n
@@ -272,20 +277,25 @@ np = NeoPixel(Pin(16), NUM, timing=TIMING)
 def flash(c, t=0.2): np.fill(c); np.write(); time.sleep(t); np.fill((0, 0, 0)); np.write()
 
 print(&quot;조용히 해주세요… 배경소음 측정 중&quot;)
-base = max(level() for _ in range(20)); THRESH = base * 3 + 150
+base = max(level() for _ in range(20)); THRESH = base * 2   # 민감하게(작은 소리도)
 print(&quot;준비! 소리를 내보세요. (임계값=%.0f)&quot; % THRESH)
 while True:
     if level(120) &gt; THRESH:
         rms, zcr, crest = features(grab())
         print(&quot;소리 감지!  크기=%.0f  높낮이=%d  들쭉날쭉=%.2f&quot; % (rms, zcr, crest))
         flash((0, 0, 40)); time.sleep(0.4)
-    time.sleep(0.005)</code></pre></div><div class="callout info"><div class="callout-head">ℹ️ 이렇게 뜨면 성공! (예상 화면)</div><div class="callout-body">휘파람을 불면 셸에 <code>소리 감지!  크기=320  높낮이=181  들쭉날쭉=3.2</code> 처럼 떠요. <b>박수·노크</b>는 들쭉날쭉이 <b>크고</b>, <b>목소리·허밍</b>은 <b>작게</b> 나옵니다. 소리마다 세 숫자가 달라지면 성공!</div></div><div class="callout tip"><div class="callout-head">💡 감지가 안 되거나 너무 잦으면</div><div class="callout-body">코드가 시작할 때 <b>배경소음을 재서 임계값을 자동</b>으로 정해요. 그래도 안 맞으면 <code>THRESH</code> 식의 숫자(<code>*3+150</code>)를 조절하세요. 소리가 안 잡히면 ↓, 가만히 있어도 잡히면 ↑.</div></div></section><section class="sec" id="chml-4"><h3 class="sec-title">따라하기 ② 내 소리 직접 모으기 (혼자, 콘솔 키)</h3><p class="prose">데이터 모으기가 <b>이 책에서 제일 쉬워졌어요</b> — 와이파이도 짝도 필요 없습니다. Thonny <b>셸에 숫자 키</b>를 누르고 그 소리를 내면 자동 저장돼요.</p><ol class="steps"><li><b>키 누르기</b><span>셸에 <code>1</code>(휘파람) 등 숫자를 입력 (LED 주황)</span></li><li><b>소리 내기</b><span>그 소리를 ‘지금’ 냅니다 → 피코가 잡아 저장 (LED 초록)</span></li><li><b>반복</b><span>소리마다 <b>10개씩</b> (또렷한 소리면 5개도 OK). 종류마다 <b>비슷한 수</b>로!</span></li><li><b>끝내기</b><span><code>s</code> 입력 → <code>sounds.csv</code> 완성</span></li></ol><div class="callout info"><div class="callout-head">ℹ️ 몇 개나 모아야 할까? — 학습곡선으로 본 정밀 가이드</div><div class="callout-body">실제로 표본 수를 늘려가며 정확도를 재봤어요. 필요한 개수는 <b>‘소리가 얼마나 비슷한가’</b>에 달렸습니다:<br>• <b>또렷이 다른 소리</b>(휘파람·박수처럼) → <b>각 3~5개</b>면 거의 100%.<br>• <b>조금 헷갈리는 소리</b> → <b>각 10개</b> 권장(여기서 정확도가 거의 평평해져요. 15~20개로 늘려도 +2~3%p뿐).<br>• <b>많이 헷갈리거나 종류가 5개 이상</b> → <b>20~30개+</b> 필요(또는 아래 <b>FFT 심화</b>로 특징 늘리기).<br><b>개수보다 ‘균형’이 더 중요</b>해요 — 한 소리만 30개·다른 건 3개면 30개짜리 쪽으로 쏠립니다. 소리마다 비슷한 수로!</div></div><div class="callout key"><div class="callout-head">🔑 조용한 곳에서! — 좋은 데이터의 조건</div><div class="callout-body">배경이 시끄러우면 ‘좋은 예시’가 안 모여요. <b>조용한 곳에서, 마이크에 비슷한 거리</b>로 소리를 내세요. ‘<b>좋은 데이터가 좋은 AI를 만든다</b>’ — 이게 오늘의 진짜 교훈이에요.</div></div><div class="block code-block"><div class="block-head"><span class="block-label">코드 ③ · 소리 모으기 (콘솔 라벨링)</span><span class="lang-tag">PYTHON</span><button class="copy-btn" aria-label="복사">복사</button></div><pre><code class="language-python"># 소리 인식 ③ — 내가 고른 소리들을 직접 모으기 (혼자, 콘솔 키 라벨링) · 특징 3개
+    time.sleep(0.005)</code></pre></div><div class="callout info"><div class="callout-head">ℹ️ 이렇게 뜨면 성공! (예상 화면)</div><div class="callout-body">휘파람을 불면 셸에 <code>소리 감지!  크기=320  높낮이=181  들쭉날쭉=3.2</code> 처럼 떠요. <b>박수·노크</b>는 들쭉날쭉이 <b>크고</b>, <b>목소리·허밍</b>은 <b>작게</b> 나옵니다. 소리마다 세 숫자가 달라지면 성공!</div></div><div class="callout tip"><div class="callout-head">💡 감지가 안 되거나 너무 잦으면</div><div class="callout-body">코드가 시작할 때 <b>배경소음을 재서 임계값을 자동</b>으로 정해요. 그래도 안 맞으면 <code>THRESH</code> 식의 숫자(<code>*3+150</code>)를 조절하세요. 소리가 안 잡히면 ↓, 가만히 있어도 잡히면 ↑.</div></div></section><section class="sec" id="chml-4"><h3 class="sec-title">따라하기 ② 내 소리 직접 모으기 (혼자, 콘솔 키)</h3><p class="prose">데이터 모으기가 <b>이 책에서 제일 쉬워졌어요</b> — 와이파이도 짝도 필요 없습니다. Thonny <b>셸에 숫자 키</b>를 누르고 그 소리를 내면 자동 저장돼요.</p><ol class="steps"><li><b>키 누르기</b><span>셸에 <code>1</code>(휘파람) 등 숫자를 입력 (LED 주황)</span></li><li><b>소리 내기</b><span><b>3초 안에</b> 그 소리를 한 번 → 가장 또렷한 0.2초가 저장(LED 초록). <b>큰 소리 아니어도 OK!</b></span></li><li><b>반복</b><span>소리마다 <b>10개씩</b> (또렷한 소리면 5개도 OK). 종류마다 <b>비슷한 수</b>로!</span></li><li><b>끝내기</b><span><code>s</code> 입력 → <code>sounds.csv</code> 완성</span></li></ol><div class="callout info"><div class="callout-head">ℹ️ 몇 개나 모아야 할까? — 학습곡선으로 본 정밀 가이드</div><div class="callout-body">실제로 표본 수를 늘려가며 정확도를 재봤어요. 필요한 개수는 <b>‘소리가 얼마나 비슷한가’</b>에 달렸습니다:<br>• <b>또렷이 다른 소리</b>(휘파람·박수처럼) → <b>각 3~5개</b>면 거의 100%.<br>• <b>조금 헷갈리는 소리</b> → <b>각 10개</b> 권장(여기서 정확도가 거의 평평해져요. 15~20개로 늘려도 +2~3%p뿐).<br>• <b>많이 헷갈리거나 종류가 5개 이상</b> → <b>20~30개+</b> 필요(또는 아래 <b>FFT 심화</b>로 특징 늘리기).<br><b>개수보다 ‘균형’이 더 중요</b>해요 — 한 소리만 30개·다른 건 3개면 30개짜리 쪽으로 쏠립니다. 소리마다 비슷한 수로!</div></div><div class="callout key"><div class="callout-head">🔑 조용한 곳에서! — 좋은 데이터의 조건</div><div class="callout-body">배경이 시끄러우면 ‘좋은 예시’가 안 모여요. <b>조용한 곳에서, 마이크에 비슷한 거리</b>로 소리를 내세요. ‘<b>좋은 데이터가 좋은 AI를 만든다</b>’ — 이게 오늘의 진짜 교훈이에요.</div></div><div class="block code-block"><div class="block-head"><span class="block-label">코드 ③ · 소리 모으기 (콘솔 라벨링)</span><span class="lang-tag">PYTHON</span><button class="copy-btn" aria-label="복사">복사</button></div><pre><code class="language-python"># 소리 인식 ③ — 내가 고른 소리들을 직접 모으기 (혼자, 콘솔 키 라벨링) · 특징 3개
 from machine import ADC, Pin
 from neopixel import NeoPixel
 import time, math
 
-mic = ADC(Pin(27)); N = 1600
-def grab(): return [mic.read_u16() for _ in range(N)]
+mic = ADC(Pin(27))
+WIN_MS = 200       # ★ 한 번에 &#x27;0.2초&#x27;를 한 덩어리로 (수집 길이가 정확히 정해져요!)
+def grab():
+    buf = []; t0 = time.ticks_ms()
+    while time.ticks_diff(time.ticks_ms(), t0) &lt; WIN_MS:
+        buf.append(mic.read_u16())
+    return buf
 def features(buf):
     n = len(buf); m = sum(buf) / n; ss = 0.0; zc = 0; peak = 0.0; prev = buf[0] - m
     for v in buf:
@@ -305,8 +315,7 @@ def flash(c, t=0.2): np.fill(c); np.write(); time.sleep(t); np.fill((0, 0, 0)); 
 # ★★ 가르칠 소리 이름 — 마음대로 바꾸세요 ★★
 LABELS = {&quot;1&quot;: &quot;휘파람&quot;, &quot;2&quot;: &quot;박수&quot;, &quot;3&quot;: &quot;말소리&quot;, &quot;4&quot;: &quot;노크&quot;}
 
-print(&quot;조용히… 배경소음 측정 중&quot;)
-base = max(level() for _ in range(20)); THRESH = base * 3 + 150
+# 녹음은 임계값이 필요 없어요 — 키를 누른 뒤 &#x27;가장 또렷한 0.2초&#x27;를 잡습니다(작은 소리도 OK).
 try: open(&quot;sounds.csv&quot;).close()
 except OSError: open(&quot;sounds.csv&quot;, &quot;w&quot;).write(&quot;rms,zcr,crest,label\n&quot;)
 def counts():
@@ -319,17 +328,19 @@ def counts():
 
 print(&quot;\n=== 소리 모으기 ===&quot;)
 for k, v in LABELS.items(): print(&quot;  %s = %s&quot; % (k, v))
-print(&quot;  s = 끝내기\n숫자 키를 누른 뒤, 그 소리를 내보세요!&quot;)
+print(&quot;  s = 끝내기\n숫자 키를 누른 뒤, 3초 안에 그 소리를 &#x27;한 번&#x27; 내세요! (큰 소리 아니어도 돼요)&quot;)
 while True:
     cmd = input(&quot;라벨&gt; &quot;).strip()
     if cmd == &quot;s&quot;: break
     name = LABELS.get(cmd)
     if not name:
         print(&quot;  ↑ 1~4 또는 s&quot;); continue
-    print(&quot;  지금 &#x27;%s&#x27; 소리를 내세요…&quot; % name); np.fill((40, 25, 0)); np.write()
-    while level(120) &lt; THRESH:
-        pass
-    rms, zcr, crest = features(grab())
+    print(&quot;  ▶ &#x27;%s&#x27; 소리를 지금 내세요… (3초 동안 들어요)&quot; % name); np.fill((40, 25, 0)); np.write()
+    best = None; bestr = -1.0; t0 = time.ticks_ms()
+    while time.ticks_diff(time.ticks_ms(), t0) &lt; 3000:        # 3초 동안 0.2초 조각들을 보며
+        rms, zcr, crest = features(grab())
+        if rms &gt; bestr: bestr = rms; best = (rms, zcr, crest)  # 가장 또렷한 조각 채택(임계값 없음!)
+    rms, zcr, crest = best
     open(&quot;sounds.csv&quot;, &quot;a&quot;).write(&quot;%.0f,%d,%.2f,%s\n&quot; % (rms, zcr, crest, name))
     flash((0, 40, 0))
     print(&quot;  저장! %s (크기=%.0f 높낮이=%d 들쭉=%.2f) | 현재: %s&quot; % (name, rms, zcr, crest, counts()))
@@ -351,8 +362,13 @@ import time, math
 from machine import ADC, Pin
 from neopixel import NeoPixel
 
-mic = ADC(Pin(27)); N = 1600
-def grab(): return [mic.read_u16() for _ in range(N)]
+mic = ADC(Pin(27))
+WIN_MS = 200       # 한 번에 &#x27;0.2초&#x27;를 한 덩어리로 (녹음과 동일한 길이여야 특징이 맞아요!)
+def grab():
+    buf = []; t0 = time.ticks_ms()
+    while time.ticks_diff(time.ticks_ms(), t0) &lt; WIN_MS:
+        buf.append(mic.read_u16())
+    return buf
 def features(buf):
     n = len(buf); m = sum(buf) / n; ss = 0.0; zc = 0; peak = 0.0; prev = buf[0] - m
     for v in buf:
@@ -401,7 +417,7 @@ def predict(feat, k=5):
 
 # ── 4) 새 소리 기다렸다 예측 ──
 print(&quot;조용히… 배경소음 측정 중&quot;)
-base = max(level() for _ in range(20)); THRESH = base * 3 + 150
+base = max(level() for _ in range(20)); THRESH = base * 2   # 민감하게(작은 소리도 잡게). 잦으면 ↑
 print(&quot;준비! 소리를 내면 알아맞힐게요.&quot;)
 while True:
     if level(120) &gt; THRESH:
@@ -463,7 +479,7 @@ while True:
     if level() &gt; THRESH:
         rms, zcr, crest = features(grab())
         print(&quot;소리 감지!  크기=%.0f  높낮이=%d  들쭉날쭉=%.2f&quot; % (rms, zcr, crest))
-        flash((0, 0, 40)); time.sleep(0.4)</code></pre></div></details><details class="codefold"><summary>I2S ③ · 소리 모으기 <span class="fold-hint">· 59줄 · 펼쳐서 복사</span></summary><div class="block code-block"><div class="block-head"><span class="block-label">I2S ③ · 소리 모으기</span><span class="lang-tag">PYTHON</span><button class="copy-btn" aria-label="복사">복사</button></div><pre><code class="language-python"># 소리 인식 ③(I2S) — INMP441로 소리 모으기 (콘솔 키 라벨링) · 특징 3개
+        flash((0, 0, 40)); time.sleep(0.4)</code></pre></div></details><details class="codefold"><summary>I2S ③ · 소리 모으기 <span class="fold-hint">· 61줄 · 펼쳐서 복사</span></summary><div class="block code-block"><div class="block-head"><span class="block-label">I2S ③ · 소리 모으기</span><span class="lang-tag">PYTHON</span><button class="copy-btn" aria-label="복사">복사</button></div><pre><code class="language-python"># 소리 인식 ③(I2S) — INMP441로 소리 모으기 (콘솔 키 라벨링) · 특징 3개
 from machine import I2S, Pin
 from neopixel import NeoPixel
 import struct, time, math
@@ -493,7 +509,7 @@ def flash(c, t=0.2): np.fill(c); np.write(); time.sleep(t); np.fill((0, 0, 0)); 
 
 LABELS = {&quot;1&quot;: &quot;휘파람&quot;, &quot;2&quot;: &quot;박수&quot;, &quot;3&quot;: &quot;말소리&quot;, &quot;4&quot;: &quot;노크&quot;}
 print(&quot;조용히… 배경소음 측정 중&quot;)
-base = max(level() for _ in range(20)); THRESH = base * 3 + 30
+# 녹음은 임계값 없이 — 키 누른 뒤 &#x27;가장 또렷한 한 조각&#x27;(약 0.15초)을 잡아요(작은 소리도 OK).
 try: open(&quot;sounds.csv&quot;).close()
 except OSError: open(&quot;sounds.csv&quot;, &quot;w&quot;).write(&quot;rms,zcr,crest,label\n&quot;)
 def counts():
@@ -506,17 +522,19 @@ def counts():
 
 print(&quot;\n=== 소리 모으기 ===&quot;)
 for k, v in LABELS.items(): print(&quot;  %s = %s&quot; % (k, v))
-print(&quot;  s = 끝내기\n숫자 키를 누른 뒤 소리를 내보세요!&quot;)
+print(&quot;  s = 끝내기\n숫자 키를 누른 뒤, 3초 안에 그 소리를 &#x27;한 번&#x27; 내세요! (큰 소리 아니어도 돼요)&quot;)
 while True:
     cmd = input(&quot;라벨&gt; &quot;).strip()
     if cmd == &quot;s&quot;: break
     name = LABELS.get(cmd)
     if not name:
         print(&quot;  ↑ 1~4 또는 s&quot;); continue
-    print(&quot;  지금 &#x27;%s&#x27; 소리를 내세요…&quot; % name); np.fill((40, 25, 0)); np.write()
-    while level() &lt; THRESH:
-        pass
-    rms, zcr, crest = features(grab())
+    print(&quot;  ▶ &#x27;%s&#x27; 소리를 지금 내세요… (3초 동안 들어요)&quot; % name); np.fill((40, 25, 0)); np.write()
+    best = None; bestr = -1.0; t0 = time.ticks_ms()
+    while time.ticks_diff(time.ticks_ms(), t0) &lt; 3000:
+        rms, zcr, crest = features(grab())
+        if rms &gt; bestr: bestr = rms; best = (rms, zcr, crest)
+    rms, zcr, crest = best
     open(&quot;sounds.csv&quot;, &quot;a&quot;).write(&quot;%.0f,%d,%.2f,%s\n&quot; % (rms, zcr, crest, name))
     flash((0, 40, 0))
     print(&quot;  저장! %s (크기=%.0f 높낮이=%d 들쭉=%.2f) | 현재: %s&quot; % (name, rms, zcr, crest, counts()))
@@ -572,14 +590,14 @@ def predict(feat, k=5):
     b = max(vote, key=vote.get); return b, vote[b] / sum(vote.values())
 
 print(&quot;조용히… 배경소음 측정 중&quot;)
-base = max(level() for _ in range(20)); THRESH = base * 3 + 30
+base = max(level() for _ in range(20)); THRESH = base * 2   # 민감하게(작은 소리도). 잦으면 ↑
 print(&quot;준비! 소리를 내면 알아맞힐게요.&quot;)
 while True:
     if level() &gt; THRESH:
         feat = features(grab()); name, conf = predict(feat)
         print(&quot;이건… %s!  (확신 %d%%, 크기=%.0f 높낮이=%d 들쭉=%.2f)&quot;
               % (name, conf * 100, feat[0], feat[1], feat[2]))
-        show(cidx[name], max(1, int(conf * NUM))); time.sleep(1.0); show(0, 0)</code></pre></div></details></section><section class="sec" id="chml-9"><h3 class="sec-title">모의 테스트 — 하드웨어 없이 브라우저에서 체험</h3><p class="prose">피코가 없어도 괜찮아요. 아래에서 소리를 골라 누르면 같은 <b>3특징 k-NN</b>이 맞히고, <b>목소리로 말해줍니다</b>(MP3 출력 미리보기!). ‘내 마이크’ 탭에선 진짜 마이크로 직접 가르치고 테스트할 수도 있어요.</p><div class="mocktest" data-ac="#0891B2"></div><div class="callout tip"><div class="callout-head">💡 마이크 모드는 https에서</div><div class="callout-body">‘내 마이크’ 탭은 브라우저 마이크 권한이 필요해, <b>배포된 https 사이트</b>에서 가장 잘 됩니다. 버튼 모드는 어디서나 동작해요.</div></div></section><section class="sec" id="chml-10"><h3 class="sec-title">INMP441 심화 — FFT 주파수밴드로 음색까지 (성능 끌어올리기)</h3><p class="prose">예측이 잘 돼야 재밌죠. 더 어려운 소리(휘파람 vs 쉬익, 모음 ‘아’ vs ‘이’처럼 <b>음색만 다른</b> 소리)까지 가르려면 특징을 더 풍부하게 — <b>8개 주파수 대역의 에너지</b>를 씁니다. 음성비서가 쓰는 방식의 축소판이에요. (INMP441 권장, ulab 없이 Goertzel로 계산.)</p><div class="callout info"><div class="callout-head">ℹ️ 한 파일로 수집→예측까지</div><div class="callout-body">이 코드는 실행하면 <b>[수집]</b>(숫자키로 소리 모으기) → <code>go</code> 입력 → <b>[예측]</b> 순으로 한 번에 돌아갑니다. 음색이 다른 소리일수록 효과가 커요.</div></div><details class="codefold"><summary>코드 ⑤ · FFT 주파수밴드 + k-NN (INMP441 심화) <span class="fold-hint">· 75줄 · 펼쳐서 복사</span></summary><div class="block code-block"><div class="block-head"><span class="block-label">코드 ⑤ · FFT 주파수밴드 + k-NN (INMP441 심화)</span><span class="lang-tag">PYTHON</span><button class="copy-btn" aria-label="복사">복사</button></div><pre><code class="language-python"># 소리 인식 ⑤ (심화 · INMP441) — FFT 주파수밴드 특징으로 더 똑똑하게
+        show(cidx[name], max(1, int(conf * NUM))); time.sleep(1.0); show(0, 0)</code></pre></div></details></section><section class="sec" id="chml-9"><h3 class="sec-title">모의 테스트 — 하드웨어 없이 브라우저에서 체험</h3><p class="prose">피코가 없어도 괜찮아요. 아래에서 소리를 골라 누르면 같은 <b>3특징 k-NN</b>이 맞히고, <b>목소리로 말해줍니다</b>(MP3 출력 미리보기!). ‘내 마이크’ 탭에선 진짜 마이크로 직접 가르치고 테스트할 수도 있어요.</p><div class="mocktest" data-ac="#0891B2"></div><div class="callout tip"><div class="callout-head">💡 마이크 모드는 https에서</div><div class="callout-body">‘내 마이크’ 탭은 브라우저 마이크 권한이 필요해, <b>배포된 https 사이트</b>에서 가장 잘 됩니다. 버튼 모드는 어디서나 동작해요.</div></div></section><section class="sec" id="chml-10"><h3 class="sec-title">INMP441 심화 — FFT 주파수밴드로 음색까지 (성능 끌어올리기)</h3><p class="prose">예측이 잘 돼야 재밌죠. 더 어려운 소리(휘파람 vs 쉬익, 모음 ‘아’ vs ‘이’처럼 <b>음색만 다른</b> 소리)까지 가르려면 특징을 더 풍부하게 — <b>8개 주파수 대역의 에너지</b>를 씁니다. 음성비서가 쓰는 방식의 축소판이에요. (INMP441 권장, ulab 없이 Goertzel로 계산.)</p><div class="callout info"><div class="callout-head">ℹ️ 한 파일로 수집→예측까지</div><div class="callout-body">이 코드는 실행하면 <b>[수집]</b>(숫자키로 소리 모으기) → <code>go</code> 입력 → <b>[예측]</b> 순으로 한 번에 돌아갑니다. 음색이 다른 소리일수록 효과가 커요.</div></div><details class="codefold"><summary>코드 ⑤ · FFT 주파수밴드 + k-NN (INMP441 심화) <span class="fold-hint">· 78줄 · 펼쳐서 복사</span></summary><div class="block code-block"><div class="block-head"><span class="block-label">코드 ⑤ · FFT 주파수밴드 + k-NN (INMP441 심화)</span><span class="lang-tag">PYTHON</span><button class="copy-btn" aria-label="복사">복사</button></div><pre><code class="language-python"># 소리 인식 ⑤ (심화 · INMP441) — FFT 주파수밴드 특징으로 더 똑똑하게
 # 8개 주파수 대역의 에너지를 특징으로 쓰면 &#x27;음색(timbre)&#x27;까지 구분해요.
 # ulab 없이 Goertzel 알고리즘으로 각 대역 에너지를 직접 계산합니다.
 # 한 번 실행에서 [수집] → &#x27;go&#x27; 입력 → [예측] 흐름으로 끝납니다.
@@ -632,9 +650,12 @@ while True:
     if cmd == &quot;go&quot;: break
     nm = LABELS.get(cmd)
     if not nm: continue
-    print(&quot;  &#x27;%s&#x27; 소리를 내세요…&quot; % nm)
-    while level() &lt; THRESH: pass
-    data.append((features(grab()), nm)); print(&quot;  저장 (총 %d개)&quot; % len(data))
+    print(&quot;  ▶ &#x27;%s&#x27; 소리를 지금 내세요… (3초)&quot; % nm)
+    best = None; bestr = -1.0; t0 = time.ticks_ms()
+    while time.ticks_diff(time.ticks_ms(), t0) &lt; 3000:        # 3초 중 &#x27;가장 또렷한&#x27; 조각
+        x = grab(); mm = sum(x) / len(x); rr = sum((v - mm) ** 2 for v in x)
+        if rr &gt; bestr: bestr = rr; best = features(x)
+    data.append((best, nm)); print(&quot;  저장 (총 %d개)&quot; % len(data))
 
 names = sorted(set(d[1] for d in data)); cidx = {n: i for i, n in enumerate(names)}
 mins = [min(d[0][i] for d in data) for i in range(D)]
@@ -693,8 +714,13 @@ from machine import ADC, Pin, UART
 from neopixel import NeoPixel
 
 # ── 마이크 (아날로그 A1) — 소리 챕터와 똑같이 &#x27;듣기&#x27; · 특징 3개 ──
-mic = ADC(Pin(27)); N = 1600
-def grab(): return [mic.read_u16() for _ in range(N)]
+mic = ADC(Pin(27))
+WIN_MS = 200       # 한 번에 &#x27;0.2초&#x27;를 한 덩어리로 (소리 챕터와 동일한 길이!)
+def grab():
+    buf = []; t0 = time.ticks_ms()
+    while time.ticks_diff(time.ticks_ms(), t0) &lt; WIN_MS:
+        buf.append(mic.read_u16())
+    return buf
 def features(buf):
     n = len(buf); m = sum(buf) / n; ss = 0.0; zc = 0; peak = 0.0; prev = buf[0] - m
     for v in buf:
@@ -746,7 +772,7 @@ def predict(feat, k=5):
 
 # ── 배경소음 → 임계값 ──
 print(&quot;조용히… 배경소음 측정 중&quot;)
-base = max(level() for _ in range(20)); THRESH = base * 3 + 150
+base = max(level() for _ in range(20)); THRESH = base * 2   # 민감하게(작은 소리도)
 
 # ── ★ &#x27;말하기&#x27; — 자기 소리 되먹임 방지(말하는 동안 + 잔향까지 귀 닫기) ──
 SPEAK_SEC = 2.5      # 멘트 길이만큼. 음성이 잘리면 늘리세요.
